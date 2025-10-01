@@ -1,0 +1,10 @@
+{
+  "labels": [
+    "dependencies"
+  ],
+  "enabledManagers": [
+    "asdf",
+    "golang",
+    "github-actions"
+  ]
+}
