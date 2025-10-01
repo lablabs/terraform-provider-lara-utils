@@ -9,8 +9,6 @@ terraform {
   }
 }
 
-provider "lara-utils" {}
-
 locals {
   map1 = {
     a = {

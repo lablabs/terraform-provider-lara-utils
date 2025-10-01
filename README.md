@@ -8,13 +8,10 @@ The LARA Utils provider offers a collection of utility functions that extend Ter
 terraform {
   required_providers {
     lara-utils = {
-      source  = "lablabs/lara-utils"
-      version = "~> 1.0"
+      source = "lablabs/lara-utils"
     }
   }
 }
-
-provider "lara-utils" {}
 ```
 
 ## Functions
@@ -85,10 +82,10 @@ make generate
 To run unit tests:
 
 ```shell
-go test ./...
+make test
 ```
 
-In order to run the full suite of Acceptance tests, run:
+In order to run the full suite of acceptance tests, run:
 
 ```shell
 make testacc
