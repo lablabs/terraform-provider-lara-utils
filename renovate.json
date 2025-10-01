@@ -4,7 +4,7 @@
   ],
   "enabledManagers": [
     "asdf",
-    "golang",
+    "gomod",
     "github-actions"
   ]
 }
