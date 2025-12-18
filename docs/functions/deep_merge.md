@@ -3,31 +3,31 @@
 page_title: "deep_merge function - lara-utils"
 subcategory: ""
 description: |-
-  Deep merge function
+  Deep merge objects
 ---
 
 # function: deep_merge
 
-<!-- Copyright (c) Robin Breathe and contributors -->
+<!-- Copyright (c) Labyrinth Labs s.r.o. -->
 <!-- SPDX-License-Identifier: MPL-2.0 -->
 
 <!-- Originally copied from https://github.com/isometry/terraform-provider-deepmerge/blob/main/internal/provider/mergo_function.md -->
 
 ## Overview
 
-Unlike Terraform's built-in `merge()` function which only performs shallow merging, `mergo` recursively traverses nested structures. The function accepts an arbitrary number of maps or objects, and returns a single merged result.
+Unlike Terraform's built-in `merge()` function which only performs shallow merging, `provider::lara-utils::deep_merge()` recursively traverses nested structures. The function accepts list of maps or objects, and returns a single merged result.
 
 ## Merge Modes
 
-A distinctive feature of `mergo` is its use of string arguments to control merge strategies. Simply append one or more control strings after your maps to change how the merge operates:
+A distinctive feature of `provider::lara-utils::deep_merge()` is its use of configuration object to control merge strategies. Simply pass one or more configuration objects (merged together with later having precedence) after your merging list to change how the merge operates:
 
-| Mode                                 | Description                                | Use Case                                |
-| ------------------------------------ | ------------------------------------------ | --------------------------------------- |
-| `"override"` / `"replace"` (default) | Later values replace earlier ones          | Standard configuration layering         |
-| `"no_override"`                      | Earlier values are preserved               | Setting immutable defaults              |
-| `"no_null_override"`                 | Null values don't replace existing values  | Optional configuration fields           |
-| `"append"` / `"append_lists"`        | Lists are concatenated instead of replaced | Accumulating features, rules, or tags   |
-| `"union"` / `"union_lists"`          | Lists are merged as sets (unique elements) | Deduplicating tags, IPs, or identifiers |
+| Mode             | Description                                               | Use Case                                        | Default  |
+|------------------|-----------------------------------------------------------|-------------------------------------------------|----------|
+| `override`       | Later values replace earlier ones                         | Standard configuration layering                 | enabled  |
+| `null_override`  | Null values will replace existing values                  | Removing Helm chart defaults                    | enabled  |
+| `append_list`    | Lists are concatenated instead of replaced                | Accumulating features, rules, or tags           | disabled |
+| `deep_copy_list` | Lists are deeply merged element by element using override | Merging of nested lists with complex structures | disabled |
+| `union_lists`    | Lists are merged as sets (unique elements)                | Deduplicating tags, IPs, or identifiers         | disabled |
 
 ### Examples by Mode
 
@@ -50,21 +50,21 @@ locals {
   defaults    = { timeout = 30, retries = 3, debug = false }
   user_config = { timeout = 60, debug = true, custom = "value" }
 
-  result = provider::deepmerge::mergo(local.defaults, local.user_config, "no_override")
+  result = provider::lara-utils::deep_merge([local.defaults, local.user_config], { override = false })
   # Result: { timeout = 30, retries = 3, debug = false, custom = "value" }
   # Note: defaults are preserved, only new keys from user_config are added
 }
 ```
 
-#### No Null Override Mode
+#### Null Override Mode
 
 ```hcl
 locals {
   base      = { name = "service", port = 8080, optional_setting = "enabled" }
   overrides = { port = 9090, optional_setting = null }
 
-  result = provider::deepmerge::mergo(local.base, local.overrides, "no_null_override")
-  # Result: { name = "service", port = 9090, optional_setting = "enabled" }
+  result = provider::lara-utils::deep_merge([local.base, local.overrides], { null_override = false })
+  # Result: { name = "service", port = 9090, optional_setting = null }
   # Note: null doesn't override the existing value
 }
 ```
@@ -87,7 +87,7 @@ locals {
     }
   }
 
-  result = provider::deepmerge::mergo(local.base_rules, local.additional_rules, "append")
+  result = provider::lara-utils::deep_merge([local.base_rules, local.additional_rules], { append_list = true })
   # Result: {
   #   firewall = {
   #     allowed_ports = [22, 80, 443, 8080, 9090]
@@ -115,7 +115,7 @@ locals {
     }
   }
 
-  result = provider::deepmerge::mergo(local.base_tags, local.additional_tags, "union_lists")
+  result = provider::lara-utils::deep_merge([local.base_tags, local.additional_tags], { union_lists = true })
   # Result: {
   #   security = {
   #     allowed_ports = [22, 80, 443, 8080, 9090]  # Unique elements only
@@ -172,10 +172,7 @@ locals {
   }
 
   # Get the final configuration for the current environment
-  final_config = provider::deepmerge::mergo(
-    local.base_app_config,
-    lookup(local.env_configs, var.environment, {})
-  )
+  final_config = provider::lara-utils::deep_merge([local.base_app_config, lookup(local.env_configs, var.environment, {})])
 }
 ```
 
@@ -248,11 +245,7 @@ locals {
   }
 
   # Merge with append mode for arrays
-  deployment = provider::deepmerge::mergo(
-    local.deployment_base,
-    local.prod_overrides,
-    "append"
-  )
+  deployment = provider::lara-utils::deep_merge([local.deployment_base, local.prod_overrides], { append_list = true })
 }
 ```
 
@@ -279,12 +272,7 @@ locals {
   }
 
   # Merge all tags with automatic deduplication
-  final_tags = provider::deepmerge::mergo(
-    local.org_tags,
-    local.team_tags,
-    local.env_tags,
-    "union_lists"
-  )
+  final_tags = provider::lara-utils::deep_merge([local.org_tags, local.team_tags, local.env_tags], { union_lists = true })
   # Result: {
   #   global_tags = ["terraform", "managed", "compliance", "backend", "api", "production"]
   #   security_tags = ["encrypted", "monitored", "audited"]
@@ -299,12 +287,12 @@ locals {
 
 <!-- signature generated by tfplugindocs -->
 ```text
-deep_merge(maps dynamic...) dynamic
+deep_merge(objects dynamic, options dynamic...) dynamic
 ```
 
 ## Arguments
 
 <!-- arguments generated by tfplugindocs -->
-
+1. `objects` (Dynamic) List of objects to merge
 <!-- variadic argument generated by tfplugindocs -->
-1. `maps` (Variadic, Dynamic, Nullable) Maps to merge
+1. `options` (Variadic, Dynamic) Merging options

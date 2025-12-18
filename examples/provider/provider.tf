@@ -25,5 +25,9 @@ locals {
     b = { n = 42 }
   }
 
-  merged = provider::lara-utils::deep_merge(local.map1, local.map2)
+  merged = provider::lara-utils::deep_merge([local.map1, local.map2])
+
+  merged_with_options = provider::lara-utils::deep_merge([local.map1, local.map2], { append_list = true })
+
+  merged_yaml = provider::lara-utils::yaml_deep_merge([yamlencode(local.map1), yamlencode(local.map2)])
 }

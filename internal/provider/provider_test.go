@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright (c) Labyrinth Labs s.r.o.
 // SPDX-License-Identifier: MPL-2.0
 
 package provider
@@ -12,5 +12,11 @@ import (
 // The factory function is called for each Terraform CLI command to create a provider
 // server that the CLI can connect to and interact with.
 var testAccProtoV6ProviderFactories = map[string]func() (tfprotov6.ProviderServer, error){
-	"lara-utils": providerserver.NewProtocol6WithError(New("test")()),
+	"lara-utils": providerserver.NewProtocol6WithError(New("dev")()),
+}
+
+func Newdd() map[string]func() (tfprotov6.ProviderServer, error) {
+	return map[string]func() (tfprotov6.ProviderServer, error){
+		"lara-utils": providerserver.NewProtocol6WithError(New("dev")()),
+	}
 }

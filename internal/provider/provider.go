@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright (c) Labyrinth Labs s.r.o.
 // SPDX-License-Identifier: MPL-2.0
 
 package provider
@@ -51,6 +51,7 @@ func (p *LaraUtilsProvider) DataSources(ctx context.Context) []func() datasource
 func (p *LaraUtilsProvider) Functions(ctx context.Context) []func() function.Function {
 	return []func() function.Function{
 		NewDeepMergeFunction,
+		NewYamlDeepMergeFunction,
 	}
 }
 

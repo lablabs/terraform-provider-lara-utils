@@ -1,4 +1,4 @@
-// Copyright (c) Robin Breathe and contributors
+// Copyright (c) Labyrinth Labs s.r.o.
 // SPDX-License-Identifier: MPL-2.0
 
 // Originally copied from https://github.com/isometry/terraform-provider-deepmerge/blob/main/internal/helpers/decode_test.go
