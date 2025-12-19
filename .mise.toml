@@ -1,10 +1,16 @@
 [tools]
-terraform = "1.13.3"
+terraform = "1.12.2"
 go = "1.25.4"
-golangci-lint = "2.5.0"
+golangci-lint = "2.7.2"
+goreleaser = "2.13.1"
+
+[tasks.mod]
+description = "Download Go modules"
+run = "go mod download"
 
 [tasks.build]
 description = "Build the project"
+depends = ["mod"]
 run = "go build -v ./..."
 
 [tasks.install]
@@ -26,12 +32,14 @@ run = "gofmt -s -w -e ."
 
 [tasks.test]
 description = "Run tests"
+depends = ["mod"]
 run = "go test -v -cover -timeout=120s -parallel=10 ./..."
 
 [tasks.testacc]
 description = "Run acceptance tests"
 env = { TF_ACC = "1" }
-run = "go test -v -cover -timeout 120m ./..."
+depends = ["mod"]
+run = "go test -v -cover -timeout 120m  ./internal/provider/"
 
 [tasks.default]
 description = "Run default tasks: fmt, lint, install, generate"
