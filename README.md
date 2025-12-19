@@ -11,10 +11,10 @@
 
 The LARA Utils provider offers a collection of utility functions that extend Terraform's built-in capabilities. Currently, it provides advanced deep merging functionality for complex data structures.
 
+## Usage
+
 > [!WARNING]
 > This provider is in active development and considered experimental. Features and APIs may change without notice. Use with caution.
-
-## Usage
 
 ```hcl
 terraform {
@@ -158,21 +158,12 @@ If the functions are not recognized:
 
 1. Verify you're using Terraform >= 1.8 (required for provider-defined functions)
 2. Ensure the provider is properly configured
-3. Check that you're using the correct function syntax: `provider::lara-utils::deep_merge(...)`
+3. Check that you're using the correct function syntax: `provider::lara-utils::deep_merge()`
 
 ### Getting Help
 
 - Check the [documentation](docs/) for detailed function reference
 - Search existing [issues](https://github.com/lablabs/terraform-provider-lara-utils/issues)
-
-## Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for a detailed history of changes.
-
-## Support
-
-- **Documentation**: [Provider Documentation](docs/)
-- **Issues**: [GitHub Issues](https://github.com/lablabs/terraform-provider-lara-utils/issues)
 
 ## Maintainers
 
