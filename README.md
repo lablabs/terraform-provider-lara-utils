@@ -1,6 +1,18 @@
+[<img src="https://cdn.prod.website-files.com/66b4bc4ca83726f5a87183ab/685136470d15399f106cb13e_adcbd542a834a1942d077cd5c09d3057_GitHub%20cover%20image%201584x396.png">](https://lablabs.io/)
+
+**About us:**</br>
+[Labyrinth Labs](https://lablabs.io/) is a one-stop-shop for **DevOps, Cloud & Kubernetes**! We specialize in creating **powerful**, **scalable** and **cloud-native platforms** tailored to elevate your business.
+
+[As a team of experienced DevOps engineers](https://lablabs.io/about/), we know how to help our customers start their journey in the cloud, address the issues they have in their current setups and provide a **strategic solution to transform their infrastructure**.
+
+---
+
 # Terraform Provider LARA Utils
 
 The LARA Utils provider offers a collection of utility functions that extend Terraform's built-in capabilities. Currently, it provides advanced deep merging functionality for complex data structures.
+
+> [!WARNING]
+> This provider is in active development and considered experimental. Features and APIs may change without notice. Use with caution.
 
 ## Usage
 
@@ -16,7 +28,8 @@ terraform {
 
 ## Functions
 
-- [deep_merge](docs/functions//deep_merge.md) - Recursively merge nested maps and objects with various merge strategies
+- [deep_merge](docs/functions/deep_merge.md) - Recursively merge nested maps and objects with various merge strategies
+- [yaml_deep_merge](docs/functions/yaml_deep_merge.md) - Functionally same as `deep_merge` but for YAML encoded strings
 
 > [!NOTE]
 > Terraform map deep merging functionality is taken from <https://github.com/isometry/terraform-provider-deepmerge>. If you are interested in this functionality particually, consider supporting original project.
@@ -24,7 +37,8 @@ terraform {
 ## Requirements
 
 - [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.8
-- [Go](http://www.golang.org) >= 1.23 (for development)
+- [Go](http://www.golang.org) >= 1.25 (for development)
+- [Mise](https://mise.jdx.dev/) (for development)
 
 ## Installation
 
@@ -47,13 +61,13 @@ If you wish to work on the provider, you'll first need [Go](http://www.golang.or
 To compile the provider, run:
 
 ```shell
-make build
+mise run build
 ```
 
 Alternatively, you can install it to your `$GOPATH/bin` directory:
 
 ```shell
-make install
+mise run install
 ```
 
 ### Local Development
@@ -74,7 +88,7 @@ provider_installation {
 To generate or update documentation, run:
 
 ```shell
-make generate
+mise run generate
 ```
 
 ### Testing
@@ -82,13 +96,13 @@ make generate
 To run unit tests:
 
 ```shell
-make test
+mise run test
 ```
 
 In order to run the full suite of acceptance tests, run:
 
 ```shell
-make testacc
+mise run testacc
 ```
 
 > [!NOTE]
@@ -99,7 +113,7 @@ make testacc
 Before submitting a pull request, ensure your code passes all checks:
 
 ```shell
-make
+mise run
 ```
 
 ## Contributing
