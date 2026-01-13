@@ -26,6 +26,7 @@ jobs:
         uses: jdx/mise-action@146a28175021df8ca24f8ee1828cc2a60f980bd5 # v3.5.1
         with:
           version: ${{ env.MISE_VERSION }}
+          cache: false
 
       - name: Goreleaser version
         run: echo "GORELEASER_VERSION=$(mise ls goreleaser --current --json | jq --raw-output '.[].version')" >> $GITHUB_ENV
