@@ -1,7 +1,7 @@
 [tools]
 terraform = "1.14.3"
 go = "1.25.5"
-golangci-lint = "2.7.2"
+golangci-lint = "2.8.0"
 goreleaser = "2.13.1"
 
 [tasks.mod]
