@@ -6,7 +6,7 @@ on:
     - cron: 0 4 * * *
 
 permissions:
-  contents: read
+  contents: write
   issues: read
   pull-requests: write
 
@@ -24,6 +24,5 @@ jobs:
         env:
           RENOVATE_REPOSITORIES: ${{ github.repository }}
           RENOVATE_ONBOARDING: false
-          LOG_LEVEL: debug
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
