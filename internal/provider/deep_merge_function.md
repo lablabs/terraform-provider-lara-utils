@@ -28,7 +28,7 @@ locals {
   config1 = { a = 1, b = { x = 10, y = 20 } }
   config2 = { a = 2, b = { y = 30, z = 40 } }
 
-  result = provider::deepmerge::mergo(local.config1, local.config2)
+  result = provider::lara-utils::deep_merge([local.config1, local.config2])
   # Result: { a = 2, b = { x = 10, y = 30, z = 40 } }
 }
 ```
