@@ -3,7 +3,6 @@ terraform = "1.14.3"
 go = "1.25.5"
 golangci-lint = "2.8.0"
 goreleaser = "2.13.1"
-python = "3.12.0"
 
 [tasks.mod]
 description = "Download Go modules"
