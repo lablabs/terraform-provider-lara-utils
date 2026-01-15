@@ -1,4 +1,4 @@
-// Copyright (c) Labyrinth Labs s.r.o.
+// Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
 package provider

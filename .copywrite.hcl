@@ -5,4 +5,11 @@ project {
   copyright_holder = "Labyrinth Labs s.r.o."
   copyright_year   = 2025
   upstream         = "hashicorp/terraform-provider-scaffolding-framework"
+
+  header_ignore = [
+    "examples/**",
+    ".github/ISSUE_TEMPLATE/*.yml",
+    ".golangci.yml",
+    ".goreleaser.yml",
+  ]
 }

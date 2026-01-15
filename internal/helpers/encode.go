@@ -1,7 +1,7 @@
-// Copyright (c) Labyrinth Labs s.r.o.
+// Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-// Originally copied from https://github.com/isometry/terraform-provider-deepmerge/blob/main/internal/helpers/encode.go
+// Originally copied from https://github.com/hashicorp/terraform-provider-kubernetes/blob/main/internal/framework/provider/functions/encode.go
 
 package helpers
 

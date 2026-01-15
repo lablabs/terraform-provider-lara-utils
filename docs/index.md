@@ -12,9 +12,6 @@ LARA utilities, e.g. map deep merge function.
 ## Example Usage
 
 ```terraform
-# Copyright (c) Labyrinth Labs s.r.o.
-# SPDX-License-Identifier: MPL-2.0
-
 terraform {
   required_providers {
     lara-utils = {
