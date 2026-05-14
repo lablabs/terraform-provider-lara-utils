@@ -41,6 +41,22 @@ locals {
   merged_with_options = provider::lara-utils::deep_merge([local.map1, local.map2], { append_list = true })
 
   merged_yaml = provider::lara-utils::yaml_deep_merge([yamlencode(local.map1), yamlencode(local.map2)])
+
+  # path_overrides applies merge options at specific jq-style paths only.
+  # Here append_list is off globally so .b.n still replaces, but .a.x gets appended.
+  merged_with_path_overrides = provider::lara-utils::deep_merge(
+    [local.map1, local.map2],
+    {
+      path_overrides = {
+        ".a.x" = { append_list = true }
+      }
+    },
+  )
+  # Result:
+  # {
+  #   a = { x = [1, 2, 3, 4, 5, 6], y = false }
+  #   b = { s = "hello, world", n = 42 }
+  # }
 }
 ```
 

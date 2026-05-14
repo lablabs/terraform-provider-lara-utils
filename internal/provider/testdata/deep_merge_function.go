@@ -5,6 +5,7 @@ package testdata
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -1239,6 +1240,126 @@ func TestDeepMergeFunction_DeepCopyList(cfg DeepMergeTestConfig) []resource.Test
 					}),
 				),
 			},
+		},
+	}
+}
+
+func TestDeepMergeFunction_PathOverrides(cfg DeepMergeTestConfig) []resource.TestStep {
+	return []resource.TestStep{
+		// append_list off globally; turn it on only at .spec.containers.
+		// Sibling list .spec.volumes must still replace.
+		{
+			Config: `
+					locals {
+						map1 = {
+							spec = {
+								containers = ["a", "b"]
+								volumes    = ["v1"]
+							}
+						}
+						map2 = {
+							spec = {
+								containers = ["c"]
+								volumes    = ["v2"]
+							}
+						}
+					}
+					output "test" {
+						value = ` + providerFunctionCall(cfg, []string{"local.map1", "local.map2"}, `{ path_overrides = { ".spec.containers" = { append_list = true } } }`) + `
+					}
+				`,
+			ConfigStateChecks: []statecheck.StateCheck{
+				statecheck.ExpectKnownOutputValue("test",
+					knownvalue.MapExact(map[string]knownvalue.Check{
+						"spec": knownvalue.MapExact(map[string]knownvalue.Check{
+							"containers": knownvalue.ListExact([]knownvalue.Check{
+								knownvalue.StringExact("a"),
+								knownvalue.StringExact("b"),
+								knownvalue.StringExact("c"),
+							}),
+							"volumes": knownvalue.ListExact([]knownvalue.Check{
+								knownvalue.StringExact("v2"),
+							}),
+						}),
+					}),
+				),
+			},
+		},
+		// Wildcard step matches multiple sibling paths.
+		{
+			Config: `
+					locals {
+						map1 = {
+							app1 = { tags = ["a", "b"] }
+							app2 = { tags = ["x"], other = ["keep"] }
+						}
+						map2 = {
+							app1 = { tags = ["b", "c"] }
+							app2 = { tags = ["y"], other = ["replace"] }
+						}
+					}
+					output "test" {
+						value = ` + providerFunctionCall(cfg, []string{"local.map1", "local.map2"}, `{ path_overrides = { ".*.tags" = { union_lists = true } } }`) + `
+					}
+				`,
+			ConfigStateChecks: []statecheck.StateCheck{
+				statecheck.ExpectKnownOutputValue("test",
+					knownvalue.MapExact(map[string]knownvalue.Check{
+						"app1": knownvalue.MapExact(map[string]knownvalue.Check{
+							"tags": knownvalue.ListExact([]knownvalue.Check{
+								knownvalue.StringExact("a"),
+								knownvalue.StringExact("b"),
+								knownvalue.StringExact("c"),
+							}),
+						}),
+						"app2": knownvalue.MapExact(map[string]knownvalue.Check{
+							"tags": knownvalue.ListExact([]knownvalue.Check{
+								knownvalue.StringExact("x"),
+								knownvalue.StringExact("y"),
+							}),
+							"other": knownvalue.ListExact([]knownvalue.Check{
+								knownvalue.StringExact("replace"),
+							}),
+						}),
+					}),
+				),
+			},
+		},
+		// null_override=false only at .keep; .drop is dropped from the result
+		// because the transformer removes keys whose src is null when
+		// null_override is enabled (matches the existing UnionLists behavior).
+		{
+			Config: `
+					locals {
+						map1 = {
+							keep = "stays"
+							drop = "stays"
+						}
+						map2 = {
+							keep = null
+							drop = null
+						}
+					}
+					output "test" {
+						value = ` + providerFunctionCall(cfg, []string{"local.map1", "local.map2"}, `{ path_overrides = { ".keep" = { null_override = false } } }`) + `
+					}
+				`,
+			ConfigStateChecks: []statecheck.StateCheck{
+				statecheck.ExpectKnownOutputValue("test",
+					knownvalue.MapExact(map[string]knownvalue.Check{
+						"keep": knownvalue.StringExact("stays"),
+					}),
+				),
+			},
+		},
+		// Malformed path produces a clear error diagnostic.
+		{
+			Config: `
+					output "test" {
+						value = ` + providerFunctionCall(cfg, []string{`{ a = 1 }`}, `{ path_overrides = { "no_leading_dot" = { append_list = true } } }`) + `
+					}
+				`,
+			ExpectError: regexp.MustCompile(`must start with '\.'`),
 		},
 	}
 }

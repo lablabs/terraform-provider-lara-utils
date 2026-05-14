@@ -22,11 +22,46 @@ type DeepMergeFunction interface {
 }
 
 type DeepMergeOptions struct {
-	Override     bool `mapstructure:"override"`
-	NullOverride bool `mapstructure:"null_override"`
-	AppendList   bool `mapstructure:"append_list"`
-	DeepCopyList bool `mapstructure:"deep_copy_list"`
-	UnionLists   bool `mapstructure:"union_lists"`
+	Override      bool                            `mapstructure:"override"`
+	NullOverride  bool                            `mapstructure:"null_override"`
+	AppendList    bool                            `mapstructure:"append_list"`
+	DeepCopyList  bool                            `mapstructure:"deep_copy_list"`
+	UnionLists    bool                            `mapstructure:"union_lists"`
+	PathOverrides map[string]*PathOverrideOptions `mapstructure:"path_overrides"`
+}
+
+// PathOverrideOptions is a partial set of options applied at a specific
+// jq-style path during a deep merge. Fields are pointers so we can tell
+// "not set" from "set to false" — only set fields overlay the global options.
+//
+// deep_copy_list is intentionally omitted: it is implemented via mergo's
+// native slice deep-copy and is global-only in v1.
+type PathOverrideOptions struct {
+	Override     *bool `mapstructure:"override"`
+	NullOverride *bool `mapstructure:"null_override"`
+	AppendList   *bool `mapstructure:"append_list"`
+	UnionLists   *bool `mapstructure:"union_lists"`
+}
+
+// Apply overlays the override's set fields onto base and returns the effective options.
+func (p *PathOverrideOptions) Apply(base DeepMergeOptions) DeepMergeOptions {
+	out := base
+	if p == nil {
+		return out
+	}
+	if p.Override != nil {
+		out.Override = *p.Override
+	}
+	if p.NullOverride != nil {
+		out.NullOverride = *p.NullOverride
+	}
+	if p.AppendList != nil {
+		out.AppendList = *p.AppendList
+	}
+	if p.UnionLists != nil {
+		out.UnionLists = *p.UnionLists
+	}
+	return out
 }
 
 func NewFunctionDefinition(fn DeepMergeFunction) function.Definition {
