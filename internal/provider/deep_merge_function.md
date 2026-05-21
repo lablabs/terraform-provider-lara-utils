@@ -51,7 +51,7 @@ locals {
   overrides = { port = 9090, optional_setting = null }
 
   result = provider::lara-utils::deep_merge([local.base, local.overrides], { null_override = false })
-  # Result: { name = "service", port = 9090, optional_setting = null }
+  # Result: { name = "service", port = 9090, optional_setting = "enabled" }
   # Note: null doesn't override the existing value
 }
 ```
