@@ -68,15 +68,15 @@ func (fn DeepMergeFunction) GetMergingObjects(ctx context.Context, args function
 
 	var elems []attr.Value
 	argVal := arg.UnderlyingValue()
-	switch argType := argVal.Type(ctx).(type) {
-	case basetypes.SetType:
-		elems = argVal.(basetypes.SetValue).Elements() //nolint:forcetypeassert
-	case basetypes.ListType:
-		elems = argVal.(basetypes.ListValue).Elements() //nolint:forcetypeassert
-	case basetypes.TupleType:
-		elems = argVal.(basetypes.TupleValue).Elements() //nolint:forcetypeassert
+	switch val := argVal.(type) {
+	case basetypes.SetValue:
+		elems = val.Elements()
+	case basetypes.ListValue:
+		elems = val.Elements()
+	case basetypes.TupleValue:
+		elems = val.Elements()
 	default:
-		return nil, function.NewArgumentFuncError(int64(0), fmt.Sprintf("list of objects required, got: %s", argType))
+		return nil, function.NewArgumentFuncError(int64(0), fmt.Sprintf("list of objects required, got: %s", argVal.Type(ctx)))
 	}
 
 	objs := []map[string]any{}
@@ -85,11 +85,10 @@ func (fn DeepMergeFunction) GetMergingObjects(ctx context.Context, args function
 		if err != nil {
 			return nil, function.NewArgumentFuncError(int64(0), err.Error())
 		}
-		if _, ok := val.(map[string]any); !ok {
+		obj, ok := val.(map[string]any)
+		if !ok {
 			return nil, function.NewArgumentFuncError(int64(0), fmt.Sprintf("merging argument %d must be object, got: %s", idx+1, reflect.TypeOf(val)))
 		}
-
-		obj := val.(map[string]any) //nolint:forcetypeassert
 		if len(obj) == 0 {
 			continue
 		}

@@ -75,12 +75,13 @@ func (r YamlDeepMergeFunction) GetMergingObjects(ctx context.Context, args funct
 		if err != nil {
 			return nil, function.NewArgumentFuncError(int64(0), err.Error())
 		}
-		if _, ok := val.(string); !ok {
+		valStr, ok := val.(string)
+		if !ok {
 			return nil, function.NewArgumentFuncError(int64(0), fmt.Sprintf("merging argument %d must be string, got: %s", idx+1, reflect.TypeOf(val)))
 		}
 
 		var obj map[string]any
-		if err := yaml.Unmarshal([]byte(val.(string)), &obj); err != nil { //nolint:forcetypeassert
+		if err := yaml.Unmarshal([]byte(valStr), &obj); err != nil {
 			return nil, function.NewArgumentFuncError(int64(0), strings.ReplaceAll(err.Error(), "JSON", "YAML")) // sigs.k8s.io/yaml.Unmarshal returns JSON-related error messages
 		}
 
