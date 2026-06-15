@@ -25,6 +25,7 @@ A distinctive feature of `provider::lara-utils::deep_merge()` is its use of conf
 | `append_list`    | Lists are concatenated instead of replaced                | Accumulating features, rules, or tags           | disabled |
 | `deep_copy_list` | Lists are deeply merged element by element using override | Merging of nested lists with complex structures | disabled |
 | `union_lists`    | Lists are merged as sets (unique elements)                | Deduplicating tags, IPs, or identifiers         | disabled |
+| `path_overrides` | Per-path overrides for any of the modes above (except `deep_copy_list`) — apply different merge behavior at specific levels of the structure | Mixed merge strategies in one call (e.g. append at `.spec.containers`, replace elsewhere) | _none_ |
 
 ### Examples by Mode
 
@@ -121,6 +122,63 @@ locals {
   # }
 }
 ```
+
+#### Per-Path Overrides
+
+`path_overrides` accepts a map of **jq-style paths** to a partial set of options that apply **only at that exact level** of the merged structure. Unmatched levels continue to use the global defaults; per-path settings overlay the globals, so each rule only needs to specify the options it wants to change.
+
+```hcl
+locals {
+  base = {
+    spec = {
+      containers = ["nginx"]
+      volumes    = ["data"]
+    }
+    metadata = { labels = { app = "web", version = "1.0" } }
+  }
+  overlay = {
+    spec = {
+      containers = ["sidecar"]   # we want this appended
+      volumes    = ["cache"]     # but this replaced
+    }
+    metadata = { labels = null } # and the labels map preserved despite the null
+  }
+
+  result = provider::lara-utils::deep_merge(
+    [local.base, local.overlay],
+    {
+      path_overrides = {
+        ".spec.containers" = { append_list   = true }
+        ".metadata.labels" = { null_override = false }
+      }
+    },
+  )
+  # Result:
+  # {
+  #   spec = {
+  #     containers = ["nginx", "sidecar"]  # appended via path rule
+  #     volumes    = ["cache"]             # replaced (global default)
+  #   }
+  #   metadata = { labels = { app = "web", version = "1.0" } }  # null skipped
+  # }
+}
+```
+
+**Supported path syntax:**
+
+- `.a.b.c` — exact nested keys
+- `.a.*.c` — `*` matches any single map key at that position
+- `.a[]` and `.a[].b` — `[]` is accepted as a wildcard step (equivalent to `*` in v1)
+
+**Rule scope:** rules fire **only at the matched node**, not at its descendants. Add a separate rule for a deeper path if you want to affect children too.
+
+**Overlay semantics:** an unspecified option in a path rule keeps the global value, so `{ append_list = true }` at `.spec.containers` leaves `null_override`, `override`, and `union_lists` at their global settings.
+
+**Limitations (v1):**
+
+- Paths address map keys, not list-element interiors. `path_overrides` cannot apply different per-element merge rules inside a list.
+- `deep_copy_list` is global-only and cannot be set in `path_overrides`.
+- jq operators beyond paths (recursive descent `..`, filters, pipes, indexed access `[0]`) are not supported and will return a validation error.
 
 ## Practical Examples
 

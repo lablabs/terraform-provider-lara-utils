@@ -78,6 +78,16 @@ func TestDeepMergeFunction_UnionLists(t *testing.T) {
 	})
 }
 
+func TestDeepMergeFunction_PathOverrides(t *testing.T) {
+	resource.UnitTest(t, resource.TestCase{
+		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
+			tfversion.SkipBelow(version.Must(version.NewVersion("1.8.0"))),
+		},
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps:                    testdata.TestDeepMergeFunction_PathOverrides(testdata.NewDeepMergeTestOptions()),
+	})
+}
+
 func TestDeepMergeFunction_Null(t *testing.T) {
 	resource.UnitTest(t, resource.TestCase{
 		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
