@@ -42,7 +42,7 @@ func (p *LaraUtilsProvider) Configure(ctx context.Context, req provider.Configur
 
 func (p *LaraUtilsProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
-		NewNullValuesResource,
+		NewTerraformDataResource,
 	}
 }
 

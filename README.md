@@ -26,6 +26,10 @@ terraform {
 }
 ```
 
+## Resources
+
+- [lara-utils_terraform_data](docs/resources/terraform_data.md) - Stores any HCL value in state and surfaces native Terraform field-level diffs on change. Equivalent to the built-in `terraform_data` but without the redundant `output` attribute.
+
 ## Functions
 
 - [deep_merge](docs/functions/deep_merge.md) - Recursively merge nested maps and objects with various merge strategies
