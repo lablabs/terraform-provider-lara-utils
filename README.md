@@ -30,6 +30,7 @@ terraform {
 
 - [deep_merge](docs/functions/deep_merge.md) - Recursively merge nested maps and objects with various merge strategies
 - [yaml_deep_merge](docs/functions/yaml_deep_merge.md) - Functionally same as `deep_merge` but for YAML encoded strings
+- [yaml_diff](docs/functions/yaml_diff.md) - Compact, git-style unified diff between two YAML documents (e.g. current vs. proposed `helm_release` values)
 
 > [!NOTE]
 > Terraform map deep merging functionality is taken from <https://github.com/isometry/terraform-provider-deepmerge>. If you are interested in this functionality particually, consider supporting original project.
