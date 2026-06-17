@@ -16,8 +16,8 @@ import (
 
 var uuidRegexp = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
-// TestTerraformDataResource_create verifies a basic create: id is a UUID,
-// input values are stored, triggers_replace is null when omitted.
+// TestTerraformDataResource_create verifies a basic create: id is a UUID
+// and input values are stored.
 func TestTerraformDataResource_create(t *testing.T) {
 	resource.UnitTest(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,

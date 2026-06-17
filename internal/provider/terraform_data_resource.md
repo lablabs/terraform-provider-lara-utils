@@ -24,17 +24,6 @@ resource "lara-utils_terraform_data" "config" {
     }
 ```
 
-## Forcing replacement
-
-Use `triggers_replace` to force destroy+recreate when a value outside of `input` changes:
-
-```hcl
-resource "lara-utils_terraform_data" "config" {
-  input            = yamldecode(nonsensitive(var.values))
-  triggers_replace = var.environment
-}
-```
-
 ## Sensitive values
 
 The `input` attribute is **not** marked sensitive. If your input is a Terraform sensitive value, wrap it with `nonsensitive()` before passing it in:
