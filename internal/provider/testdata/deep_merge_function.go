@@ -1542,6 +1542,41 @@ func TestDeepMergeFunction_NullRemove(cfg DeepMergeTestConfig) []resource.TestSt
 			},
 		},
 		{
+			// Pruning applies at every depth: a null two levels down removes only its own
+			// key, while the maps around it are merged normally.
+			Config: `
+					locals {
+						map1 = {
+							app = {
+								name    = "web"
+								logging = { level = "info", format = "json", file = "/var/log/app.log" }
+							}
+						}
+						map2 = {
+							app = {
+								logging = { level = "debug", file = null }
+							}
+						}
+					}
+					output "test" {
+						value = ` + providerFunctionCall(cfg, []string{"local.map1", "local.map2"}, "{ null_remove = true }") + `
+					}
+				`,
+			ConfigStateChecks: []statecheck.StateCheck{
+				statecheck.ExpectKnownOutputValue("test",
+					knownvalue.MapExact(map[string]knownvalue.Check{
+						"app": knownvalue.MapExact(map[string]knownvalue.Check{
+							"name": knownvalue.StringExact("web"),
+							"logging": knownvalue.MapExact(map[string]knownvalue.Check{
+								"level":  knownvalue.StringExact("debug"),
+								"format": knownvalue.StringExact("json"),
+							}),
+						}),
+					}),
+				),
+			},
+		},
+		{
 			// A null value against a nested map removes the whole subtree.
 			Config: `
 					locals {
@@ -1643,6 +1678,135 @@ func TestDeepMergeFunction_NullRemove(cfg DeepMergeTestConfig) []resource.TestSt
 						"other": knownvalue.StringExact("keep"),
 						"config": knownvalue.MapExact(map[string]knownvalue.Check{
 							"enabled": knownvalue.Bool(true),
+						}),
+					}),
+				),
+			},
+		},
+		{
+			// Pruning of an introduced subtree is recursive: nulls nested several levels
+			// inside the new block are dropped as well.
+			Config: `
+					locals {
+						map1 = {
+							app = { name = "web" }
+						}
+						map2 = {
+							ingress = {
+								enabled = true
+								class   = null
+								tls     = { secret = "web-tls", ca = null }
+							}
+						}
+					}
+					output "test" {
+						value = ` + providerFunctionCall(cfg, []string{"local.map1", "local.map2"}, "{ null_remove = true }") + `
+					}
+				`,
+			ConfigStateChecks: []statecheck.StateCheck{
+				statecheck.ExpectKnownOutputValue("test",
+					knownvalue.MapExact(map[string]knownvalue.Check{
+						"app": knownvalue.MapExact(map[string]knownvalue.Check{
+							"name": knownvalue.StringExact("web"),
+						}),
+						"ingress": knownvalue.MapExact(map[string]knownvalue.Check{
+							"enabled": knownvalue.Bool(true),
+							"tls": knownvalue.MapExact(map[string]knownvalue.Check{
+								"secret": knownvalue.StringExact("web-tls"),
+							}),
+						}),
+					}),
+				),
+			},
+		},
+		{
+			// Pruning removes keys, not their parents: a map whose last key is removed
+			// stays in the result as an empty map. Also covers a null matching nothing
+			// and a removed key being re-added by a later map.
+			Config: `
+					locals {
+						map1 = {
+							a    = "foo"
+							keep = { only = "one" }
+						}
+						map2 = {
+							a       = null
+							missing = null
+							keep    = { only = null }
+						}
+						map3 = {
+							a = "baz"
+						}
+					}
+					output "test" {
+						value = ` + providerFunctionCall(cfg, []string{"local.map1", "local.map2", "local.map3"}, "{ null_remove = true }") + `
+					}
+				`,
+			ConfigStateChecks: []statecheck.StateCheck{
+				statecheck.ExpectKnownOutputValue("test",
+					knownvalue.MapExact(map[string]knownvalue.Check{
+						"a":    knownvalue.StringExact("baz"),
+						"keep": knownvalue.MapExact(map[string]knownvalue.Check{}),
+					}),
+				),
+			},
+		},
+		{
+			// Without deep_copy_list a list is opaque: the later list replaces the earlier
+			// one wholesale and the nulls inside its elements are kept.
+			Config: `
+					locals {
+						map1 = {
+							containers = [{ name = "app", image = "web:1", env = { LOG = "info" } }]
+						}
+						map2 = {
+							containers = [{ image = "web:2", env = { LOG = null } }]
+						}
+					}
+					output "test" {
+						value = ` + providerFunctionCall(cfg, []string{"local.map1", "local.map2"}, "{ null_remove = true }") + `
+					}
+				`,
+			ConfigStateChecks: []statecheck.StateCheck{
+				statecheck.ExpectKnownOutputValue("test",
+					knownvalue.MapExact(map[string]knownvalue.Check{
+						"containers": knownvalue.ListExact([]knownvalue.Check{
+							knownvalue.MapExact(map[string]knownvalue.Check{
+								"image": knownvalue.StringExact("web:2"),
+								"env": knownvalue.MapExact(map[string]knownvalue.Check{
+									"LOG": knownvalue.Null(),
+								}),
+							}),
+						}),
+					}),
+				),
+			},
+		},
+		{
+			// The same inputs with deep_copy_list: elements are merged, so null_remove
+			// reaches inside them and prunes the nested null.
+			Config: `
+					locals {
+						map1 = {
+							containers = [{ name = "app", image = "web:1", env = { LOG = "info" } }]
+						}
+						map2 = {
+							containers = [{ image = "web:2", env = { LOG = null } }]
+						}
+					}
+					output "test" {
+						value = ` + providerFunctionCall(cfg, []string{"local.map1", "local.map2"}, "{ deep_copy_list = true, null_remove = true }") + `
+					}
+				`,
+			ConfigStateChecks: []statecheck.StateCheck{
+				statecheck.ExpectKnownOutputValue("test",
+					knownvalue.MapExact(map[string]knownvalue.Check{
+						"containers": knownvalue.ListExact([]knownvalue.Check{
+							knownvalue.MapExact(map[string]knownvalue.Check{
+								"name":  knownvalue.StringExact("app"),
+								"image": knownvalue.StringExact("web:2"),
+								"env":   knownvalue.MapExact(map[string]knownvalue.Check{}),
+							}),
 						}),
 					}),
 				),

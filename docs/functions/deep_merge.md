@@ -75,6 +75,17 @@ locals {
 
 #### Remove Null Mode
 
+With `null_remove = true` a null in a later map is read as a *delete instruction*: the matching key
+disappears from the result entirely instead of being merged in as a null value. The rule is applied
+at every level of the structure, so no null ever reaches the output (lists excepted — see
+[Nulls inside lists](#nulls-inside-lists) below).
+
+`null_remove` **takes precedence over** `null_override`. Because `null_override` is enabled by
+default, `{ null_remove = true }` removes the key on its own — you do not need to also set
+`null_override = false`.
+
+##### Removing a key
+
 ```hcl
 locals {
   base      = { name = "service", port = 8080, optional_setting = "enabled" }
@@ -86,18 +97,166 @@ locals {
 }
 ```
 
-`null_remove` **takes precedence over** `null_override`. Because `null_override` is enabled by
-default, `{ null_remove = true }` removes the key on its own — you do not need to also set
-`null_override = false`. A null value deletes the matching key from the preceding map, removing the
-whole subtree when that key holds a nested object. Nulls are pruned recursively inside nested maps,
-including subtrees introduced by a later map. Nulls inside **list** elements are only pruned when
-`deep_copy_list` is also enabled (that mode merges list elements recursively); otherwise a list is
-treated as an opaque value and its elements — including any nulls — are kept as-is.
+##### Removing a whole subtree
+
+When the deleted key holds a nested object, everything beneath it goes with it:
+
+```hcl
+locals {
+  base      = { app = { name = "svc", tls = { enabled = true, ca = "/etc/ca.pem" } } }
+  overrides = { app = { tls = null } }
+
+  result = provider::lara-utils::deep_merge([local.base, local.overrides], { null_remove = true })
+  # Result: { app = { name = "svc" } }
+  # Note: tls and both of the keys under it are gone, while app keeps its other keys
+}
+```
+
+##### Pruning happens at every depth
+
+A null takes effect wherever it appears in the structure, while the maps around it are merged as
+usual:
+
+```hcl
+locals {
+  base = {
+    app = {
+      name    = "web"
+      logging = { level = "info", format = "json", file = "/var/log/app.log" }
+    }
+  }
+
+  overrides = {
+    app = {
+      logging = { level = "debug", file = null }
+    }
+  }
+
+  result = provider::lara-utils::deep_merge([local.base, local.overrides], { null_remove = true })
+  # Result: {
+  #   app = {
+  #     name    = "web"
+  #     logging = { level = "debug", format = "json" }
+  #   }
+  # }
+  # Note: app.logging.file is removed two levels down, while level is overridden and
+  #       format and name are left alone
+}
+```
+
+##### Nulls inside subtrees introduced by a later map
+
+The examples above delete something an earlier map contributed. `null_remove` goes one step further:
+when a later map introduces a key that **no earlier map had**, that whole subtree is new and there
+is nothing to delete — yet the subtree is still walked and its nulls stripped before it lands in the
+result. A null is therefore never a value in the output; it is either a deletion or a no-op.
+
+```hcl
+locals {
+  base = {
+    app = { name = "web" }
+  }
+
+  # `ingress` is absent from base, so this entire block is newly introduced.
+  overrides = {
+    ingress = {
+      enabled = true
+      class   = null                               # one level into the new subtree
+      tls     = { secret = "web-tls", ca = null }  # two levels in
+    }
+  }
+
+  result = provider::lara-utils::deep_merge([local.base, local.overrides], { null_remove = true })
+  # Result: {
+  #   app     = { name = "web" }
+  #   ingress = { enabled = true, tls = { secret = "web-tls" } }
+  # }
+  # Note: class and ingress.tls.ca are dropped even though base had nothing to remove
+}
+```
+
+Without `null_remove`, the same merge copies the new block in verbatim and the nulls survive:
+
+```hcl
+locals {
+  result = provider::lara-utils::deep_merge([local.base, local.overrides])
+  # Result: {
+  #   app     = { name = "web" }
+  #   ingress = { enabled = true, class = null, tls = { secret = "web-tls", ca = null } }
+  # }
+}
+```
+
+That difference matters whenever the merged object is handed to a consumer that distinguishes an
+absent key from a null one — Helm values, Kubernetes manifests, or anything rendered with
+`yamlencode`, where `class: null` and an omitted `class` are not the same thing.
+
+##### No-op nulls, emptied maps, and re-adding a removed key
+
+Three smaller rules round the mode out:
+
+- a null whose key is not present in the preceding maps is simply dropped — it is never an error and
+  never adds a null key to the result;
+- pruning removes keys, not their parents: a map whose last remaining key is removed stays in the
+  result as an empty map;
+- removal is not final — a later map can re-add the key.
+
+```hcl
+locals {
+  map1 = { a = "foo", keep = { only = "one" } }
+  map2 = { a = null, missing = null, keep = { only = null } }
+  map3 = { a = "baz" }
+
+  result = provider::lara-utils::deep_merge([local.map1, local.map2, local.map3], { null_remove = true })
+  # Result: { a = "baz", keep = {} }
+  # Note: `missing` never appears, `keep` survives as an empty map, and `a` is removed
+  #       by map2 and then re-added by map3
+}
+```
+
+##### Nulls inside lists
+
+Nulls inside **list** elements are only pruned when `deep_copy_list` is also enabled (that mode
+merges list elements recursively). Otherwise a list is treated as an opaque value: the later list
+replaces the earlier one as-is, and its elements — including any nulls — are kept:
+
+```hcl
+locals {
+  base = {
+    containers = [{ name = "app", image = "web:1", env = { LOG = "info" } }]
+  }
+
+  overrides = {
+    containers = [{ image = "web:2", env = { LOG = null } }]
+  }
+
+  # The list is opaque, so it replaces the earlier one wholesale — null included.
+  replaced = provider::lara-utils::deep_merge([local.base, local.overrides], { null_remove = true })
+  # Result: { containers = [{ image = "web:2", env = { LOG = null } }] }
+
+  # With deep_copy_list the elements are merged, so null_remove reaches inside them.
+  merged = provider::lara-utils::deep_merge([local.base, local.overrides], { deep_copy_list = true, null_remove = true })
+  # Result: { containers = [{ name = "app", image = "web:2", env = {} }] }
+}
+```
+
+##### Combining with other modes
 
 `null_remove` composes with the other modes: `override`, `deep_copy_list`, `append_list`, and
 `union_lists` are still applied to non-null values while nulls are removed. For example, with
 `{ override = false, null_remove = true }` earlier values are preserved and a later null still
-deletes its key.
+deletes its key:
+
+```hcl
+locals {
+  map1 = { a = "first", b = "first_b" }
+  map2 = { a = "second", b = null }
+
+  result = provider::lara-utils::deep_merge([local.map1, local.map2], { override = false, null_remove = true })
+  # Result: { a = "first" }
+  # Note: `a` keeps the earlier value, while `b` is still removed
+}
+```
 
 #### Append Mode
 
