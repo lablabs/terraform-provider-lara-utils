@@ -48,6 +48,26 @@ func TestDeepMergeFunction_NoNullOverride(t *testing.T) {
 	})
 }
 
+func TestDeepMergeFunction_NullRemove(t *testing.T) {
+	resource.UnitTest(t, resource.TestCase{
+		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
+			tfversion.SkipBelow(version.Must(version.NewVersion("1.8.0"))),
+		},
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps:                    testdata.TestDeepMergeFunction_NullRemove(testdata.NewDeepMergeTestOptions()),
+	})
+}
+
+func TestDeepMergeFunction_OptionComposition(t *testing.T) {
+	resource.UnitTest(t, resource.TestCase{
+		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
+			tfversion.SkipBelow(version.Must(version.NewVersion("1.8.0"))),
+		},
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps:                    testdata.TestDeepMergeFunction_OptionComposition(testdata.NewDeepMergeTestOptions()),
+	})
+}
+
 func TestDeepMergeFunction_AppendList(t *testing.T) {
 	resource.UnitTest(t, resource.TestCase{
 		TerraformVersionChecks: []tfversion.TerraformVersionCheck{

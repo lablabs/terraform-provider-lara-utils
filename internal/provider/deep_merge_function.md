@@ -12,9 +12,16 @@ A distinctive feature of `provider::lara-utils::deep_merge()` is its use of conf
 |------------------|-----------------------------------------------------------|-------------------------------------------------|----------|
 | `override`       | Later values replace earlier ones                         | Standard configuration layering                 | enabled  |
 | `null_override`  | Null values will replace existing values                  | Removing Helm chart defaults                    | enabled  |
+| `null_remove`    | Null values remove the matching key entirely              | Deleting inherited defaults                     | disabled |
 | `append_list`    | Lists are concatenated instead of replaced                | Accumulating features, rules, or tags           | disabled |
 | `deep_copy_list` | Lists are deeply merged element by element using override | Merging of nested lists with complex structures | disabled |
 | `union_lists`    | Lists are merged as sets (unique elements)                | Deduplicating tags, IPs, or identifiers         | disabled |
+
+Modes can be combined by passing multiple keys in a single options object (for example
+`{ override = false, union_lists = true }`). Each mode is applied independently to the values it
+governs — `override` controls scalar replacement, the list modes control how lists are combined, and
+the null modes control how null values are handled — so combining them behaves consistently
+regardless of which other modes are enabled.
 
 ### Examples by Mode
 
@@ -55,6 +62,32 @@ locals {
   # Note: null doesn't override the existing value
 }
 ```
+
+#### Remove Null Mode
+
+```hcl
+locals {
+  base      = { name = "service", port = 8080, optional_setting = "enabled" }
+  overrides = { optional_setting = null }
+
+  result = provider::lara-utils::deep_merge([local.base, local.overrides], { null_remove = true })
+  # Result: { name = "service", port = 8080 }
+  # Note: the key is removed entirely, not just set to null
+}
+```
+
+`null_remove` **takes precedence over** `null_override`. Because `null_override` is enabled by
+default, `{ null_remove = true }` removes the key on its own — you do not need to also set
+`null_override = false`. A null value deletes the matching key from the preceding map, removing the
+whole subtree when that key holds a nested object. Nulls are pruned recursively inside nested maps,
+including subtrees introduced by a later map. Nulls inside **list** elements are only pruned when
+`deep_copy_list` is also enabled (that mode merges list elements recursively); otherwise a list is
+treated as an opaque value and its elements — including any nulls — are kept as-is.
+
+`null_remove` composes with the other modes: `override`, `deep_copy_list`, `append_list`, and
+`union_lists` are still applied to non-null values while nulls are removed. For example, with
+`{ override = false, null_remove = true }` earlier values are preserved and a later null still
+deletes its key.
 
 #### Append Mode
 

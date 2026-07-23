@@ -24,6 +24,7 @@ type DeepMergeFunction interface {
 type DeepMergeOptions struct {
 	Override     bool `mapstructure:"override"`
 	NullOverride bool `mapstructure:"null_override"`
+	NullRemove   bool `mapstructure:"null_remove"`
 	AppendList   bool `mapstructure:"append_list"`
 	DeepCopyList bool `mapstructure:"deep_copy_list"`
 	UnionLists   bool `mapstructure:"union_lists"`
@@ -50,6 +51,7 @@ func NewDefaultOptions() *DeepMergeOptions {
 	return &DeepMergeOptions{
 		Override:     true,
 		NullOverride: true,
+		NullRemove:   false,
 		AppendList:   false,
 		DeepCopyList: false,
 		UnionLists:   false,

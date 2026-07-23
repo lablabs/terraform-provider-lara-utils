@@ -1479,3 +1479,367 @@ func TestDeepMergeFunction_UnionLists(cfg DeepMergeTestConfig) []resource.TestSt
 		},
 	}
 }
+
+func TestDeepMergeFunction_NullRemove(cfg DeepMergeTestConfig) []resource.TestStep {
+	return []resource.TestStep{
+		{
+			// Top-level removal. null_override is left at its default (true), so this also
+			// guards that null_remove takes precedence over null_override.
+			Config: `
+					locals {
+						map1 = {
+							a = "foo"
+							b = "bar"
+						}
+						map2 = {
+							a = null
+						}
+					}
+					output "test" {
+						value = ` + providerFunctionCall(cfg, []string{"local.map1", "local.map2"}, "{ null_remove = true }") + `
+					}
+				`,
+			ConfigStateChecks: []statecheck.StateCheck{
+				statecheck.ExpectKnownOutputValue("test",
+					knownvalue.MapExact(map[string]knownvalue.Check{
+						"b": knownvalue.StringExact("bar"),
+					}),
+				),
+			},
+		},
+		{
+			// Nested leaf removal alongside a normal merge of non-null values.
+			Config: `
+					locals {
+						map1 = {
+							x1 = {
+								y1 = 1
+								y2 = 2
+							}
+							keep = "top"
+						}
+						map2 = {
+							x1 = {
+								y2 = null
+								y3 = 3
+							}
+						}
+					}
+					output "test" {
+						value = ` + providerFunctionCall(cfg, []string{"local.map1", "local.map2"}, "{ null_remove = true }") + `
+					}
+				`,
+			ConfigStateChecks: []statecheck.StateCheck{
+				statecheck.ExpectKnownOutputValue("test",
+					knownvalue.MapExact(map[string]knownvalue.Check{
+						"x1": knownvalue.MapExact(map[string]knownvalue.Check{
+							"y1": knownvalue.Int64Exact(1),
+							"y3": knownvalue.Int64Exact(3),
+						}),
+						"keep": knownvalue.StringExact("top"),
+					}),
+				),
+			},
+		},
+		{
+			// A null value against a nested map removes the whole subtree.
+			Config: `
+					locals {
+						map1 = {
+							x1 = {
+								y1 = 1
+							}
+							keep = "me"
+						}
+						map2 = {
+							x1 = null
+						}
+					}
+					output "test" {
+						value = ` + providerFunctionCall(cfg, []string{"local.map1", "local.map2"}, "{ null_remove = true }") + `
+					}
+				`,
+			ConfigStateChecks: []statecheck.StateCheck{
+				statecheck.ExpectKnownOutputValue("test",
+					knownvalue.MapExact(map[string]knownvalue.Check{
+						"keep": knownvalue.StringExact("me"),
+					}),
+				),
+			},
+		},
+		{
+			// A null for a key absent from the preceding map is a no-op.
+			Config: `
+					locals {
+						map1 = {
+							a = "foo"
+						}
+						map2 = {
+							z = null
+						}
+					}
+					output "test" {
+						value = ` + providerFunctionCall(cfg, []string{"local.map1", "local.map2"}, "{ null_remove = true }") + `
+					}
+				`,
+			ConfigStateChecks: []statecheck.StateCheck{
+				statecheck.ExpectKnownOutputValue("test",
+					knownvalue.MapExact(map[string]knownvalue.Check{
+						"a": knownvalue.StringExact("foo"),
+					}),
+				),
+			},
+		},
+		{
+			// Layering: a key removed by one map can be re-added by a later map.
+			Config: `
+					locals {
+						map1 = {
+							a = "foo"
+							b = "bar"
+						}
+						map2 = {
+							a = null
+						}
+						map3 = {
+							a = "baz"
+						}
+					}
+					output "test" {
+						value = ` + providerFunctionCall(cfg, []string{"local.map1", "local.map2", "local.map3"}, "{ null_remove = true }") + `
+					}
+				`,
+			ConfigStateChecks: []statecheck.StateCheck{
+				statecheck.ExpectKnownOutputValue("test",
+					knownvalue.MapExact(map[string]knownvalue.Check{
+						"a": knownvalue.StringExact("baz"),
+						"b": knownvalue.StringExact("bar"),
+					}),
+				),
+			},
+		},
+		{
+			// A null inside a newly-introduced subtree is pruned too (not copied verbatim),
+			// while its non-null siblings are kept.
+			Config: `
+					locals {
+						map1 = {
+							other = "keep"
+						}
+						map2 = {
+							config = {
+								feature = null
+								enabled = true
+							}
+						}
+					}
+					output "test" {
+						value = ` + providerFunctionCall(cfg, []string{"local.map1", "local.map2"}, "{ null_remove = true }") + `
+					}
+				`,
+			ConfigStateChecks: []statecheck.StateCheck{
+				statecheck.ExpectKnownOutputValue("test",
+					knownvalue.MapExact(map[string]knownvalue.Check{
+						"other": knownvalue.StringExact("keep"),
+						"config": knownvalue.MapExact(map[string]knownvalue.Check{
+							"enabled": knownvalue.Bool(true),
+						}),
+					}),
+				),
+			},
+		},
+		{
+			// Composes with override = false: non-null values keep the earlier value,
+			// while a null still removes its key (null_remove takes precedence).
+			Config: `
+					locals {
+						map1 = {
+							a = "first"
+							b = "first_b"
+						}
+						map2 = {
+							a = "second"
+							b = null
+						}
+					}
+					output "test" {
+						value = ` + providerFunctionCall(cfg, []string{"local.map1", "local.map2"}, "{ override = false, null_remove = true }") + `
+					}
+				`,
+			ConfigStateChecks: []statecheck.StateCheck{
+				statecheck.ExpectKnownOutputValue("test",
+					knownvalue.MapExact(map[string]knownvalue.Check{
+						"a": knownvalue.StringExact("first"),
+					}),
+				),
+			},
+		},
+		{
+			// Composes with deep_copy_list: list elements are merged element by element,
+			// while a null still removes its key.
+			Config: `
+					locals {
+						map1 = {
+							items = [
+								{ id = 1, name = "one" }
+							]
+							drop = "x"
+						}
+						map2 = {
+							items = [
+								{ id = 1, status = "active" }
+							]
+							drop = null
+						}
+					}
+					output "test" {
+						value = ` + providerFunctionCall(cfg, []string{"local.map1", "local.map2"}, "{ deep_copy_list = true, null_remove = true }") + `
+					}
+				`,
+			ConfigStateChecks: []statecheck.StateCheck{
+				statecheck.ExpectKnownOutputValue("test",
+					knownvalue.MapExact(map[string]knownvalue.Check{
+						"items": knownvalue.ListExact([]knownvalue.Check{
+							knownvalue.MapExact(map[string]knownvalue.Check{
+								"id":     knownvalue.Int64Exact(1),
+								"name":   knownvalue.StringExact("one"),
+								"status": knownvalue.StringExact("active"),
+							}),
+						}),
+					}),
+				),
+			},
+		},
+	}
+}
+
+// TestDeepMergeFunction_OptionComposition pins the behavior of combining modes
+// that both install the transformer path. override and deep_copy_list are honored
+// consistently regardless of which other mode installs the transformer.
+func TestDeepMergeFunction_OptionComposition(cfg DeepMergeTestConfig) []resource.TestStep {
+	return []resource.TestStep{
+		{
+			// override = false + union_lists: shared scalars keep the earlier value,
+			// lists are still unioned.
+			Config: `
+					locals {
+						map1 = {
+							port = "8080"
+							tags = ["a", "b"]
+						}
+						map2 = {
+							port = "9090"
+							tags = ["b", "c"]
+						}
+					}
+					output "test" {
+						value = ` + providerFunctionCall(cfg, []string{"local.map1", "local.map2"}, "{ override = false, union_lists = true }") + `
+					}
+				`,
+			ConfigStateChecks: []statecheck.StateCheck{
+				statecheck.ExpectKnownOutputValue("test",
+					knownvalue.MapExact(map[string]knownvalue.Check{
+						"port": knownvalue.StringExact("8080"),
+						"tags": knownvalue.ListExact([]knownvalue.Check{
+							knownvalue.StringExact("a"),
+							knownvalue.StringExact("b"),
+							knownvalue.StringExact("c"),
+						}),
+					}),
+				),
+			},
+		},
+		{
+			// override = false + null_override = false: shared scalars keep the earlier
+			// value, but nested maps are still deep-merged (deep merge ignores override).
+			Config: `
+					locals {
+						map1 = {
+							a = "first"
+							nested = { x = 1 }
+						}
+						map2 = {
+							a      = "second"
+							nested = { y = 2 }
+						}
+					}
+					output "test" {
+						value = ` + providerFunctionCall(cfg, []string{"local.map1", "local.map2"}, "{ override = false, null_override = false }") + `
+					}
+				`,
+			ConfigStateChecks: []statecheck.StateCheck{
+				statecheck.ExpectKnownOutputValue("test",
+					knownvalue.MapExact(map[string]knownvalue.Check{
+						"a": knownvalue.StringExact("first"),
+						"nested": knownvalue.MapExact(map[string]knownvalue.Check{
+							"x": knownvalue.Int64Exact(1),
+							"y": knownvalue.Int64Exact(2),
+						}),
+					}),
+				),
+			},
+		},
+		{
+			// deep_copy_list + null_override = false: list elements are merged element
+			// by element (deep_copy_list is honored even though the transformer is
+			// installed by null_override = false).
+			Config: `
+					locals {
+						map1 = {
+							items = [
+								{ id = 1, name = "a" }
+							]
+						}
+						map2 = {
+							items = [
+								{ id = 1, status = "on" }
+							]
+						}
+					}
+					output "test" {
+						value = ` + providerFunctionCall(cfg, []string{"local.map1", "local.map2"}, "{ deep_copy_list = true, null_override = false }") + `
+					}
+				`,
+			ConfigStateChecks: []statecheck.StateCheck{
+				statecheck.ExpectKnownOutputValue("test",
+					knownvalue.MapExact(map[string]knownvalue.Check{
+						"items": knownvalue.ListExact([]knownvalue.Check{
+							knownvalue.MapExact(map[string]knownvalue.Check{
+								"id":     knownvalue.Int64Exact(1),
+								"name":   knownvalue.StringExact("a"),
+								"status": knownvalue.StringExact("on"),
+							}),
+						}),
+					}),
+				),
+			},
+		},
+		{
+			// union_lists takes precedence over deep_copy_list when both are set.
+			Config: `
+					locals {
+						map1 = {
+							l = ["a", "b"]
+						}
+						map2 = {
+							l = ["b", "c"]
+						}
+					}
+					output "test" {
+						value = ` + providerFunctionCall(cfg, []string{"local.map1", "local.map2"}, "{ deep_copy_list = true, union_lists = true }") + `
+					}
+				`,
+			ConfigStateChecks: []statecheck.StateCheck{
+				statecheck.ExpectKnownOutputValue("test",
+					knownvalue.MapExact(map[string]knownvalue.Check{
+						"l": knownvalue.ListExact([]knownvalue.Check{
+							knownvalue.StringExact("a"),
+							knownvalue.StringExact("b"),
+							knownvalue.StringExact("c"),
+						}),
+					}),
+				),
+			},
+		},
+	}
+}
