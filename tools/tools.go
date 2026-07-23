@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright Labyrinth Labs s.r.o. 2025, 2026
 // SPDX-License-Identifier: MPL-2.0
 
 //go:build generate
