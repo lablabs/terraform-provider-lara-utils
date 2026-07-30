@@ -111,3 +111,51 @@ func TestEncodeValue(t *testing.T) {
 		})
 	}
 }
+
+// TestEncodeValueErrors covers the "unsupported type" error paths: the default
+// branch of EncodeValue and the error propagation from each collection encoder.
+// types.Int64Value is used as the trigger because basetypes.Int64Value is not
+// handled by EncodeValue's type switch.
+func TestEncodeValueErrors(t *testing.T) {
+	unsupported := types.Int64Value(5)
+
+	tests := []struct {
+		name  string
+		input attr.Value
+	}{
+		{
+			name:  "unsupported scalar",
+			input: unsupported,
+		},
+		{
+			name:  "unsupported inside tuple",
+			input: types.TupleValueMust([]attr.Type{types.Int64Type}, []attr.Value{unsupported}),
+		},
+		{
+			name:  "unsupported inside list",
+			input: types.ListValueMust(types.Int64Type, []attr.Value{unsupported}),
+		},
+		{
+			name:  "unsupported inside set",
+			input: types.SetValueMust(types.Int64Type, []attr.Value{unsupported}),
+		},
+		{
+			name:  "unsupported inside map",
+			input: types.MapValueMust(types.Int64Type, map[string]attr.Value{"k": unsupported}),
+		},
+		{
+			name: "unsupported inside object",
+			input: types.ObjectValueMust(
+				map[string]attr.Type{"k": types.Int64Type},
+				map[string]attr.Value{"k": unsupported},
+			),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := EncodeValue(tt.input)
+			assert.Error(t, err)
+		})
+	}
+}

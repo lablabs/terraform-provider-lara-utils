@@ -96,6 +96,18 @@ func TestDecodeScalar(t *testing.T) {
 			expected: nil,
 			hasError: true,
 		},
+		{
+			name:     "map with unsupported element",
+			input:    map[string]any{"bad": struct{}{}},
+			expected: nil,
+			hasError: true,
+		},
+		{
+			name:     "slice with unsupported element",
+			input:    []any{struct{}{}},
+			expected: nil,
+			hasError: true,
+		},
 	}
 
 	for _, tt := range tests {
