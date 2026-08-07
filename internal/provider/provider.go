@@ -41,7 +41,9 @@ func (p *LaraUtilsProvider) Configure(ctx context.Context, req provider.Configur
 }
 
 func (p *LaraUtilsProvider) Resources(ctx context.Context) []func() resource.Resource {
-	return []func() resource.Resource{}
+	return []func() resource.Resource{
+		NewTerraformDataResource,
+	}
 }
 
 func (p *LaraUtilsProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
