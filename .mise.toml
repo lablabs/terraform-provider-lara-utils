@@ -1,6 +1,6 @@
 [tools]
 terraform = "1.15.8"
-go = "1.26.5"
+go = "1.27.1"
 golangci-lint = "2.12.2"
 goreleaser = "2.13.1"
 
