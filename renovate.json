@@ -25,6 +25,16 @@
       "versioningTemplate": "{{#if versioning}}{{versioning}}{{else}}semver{{/if}}"
     }
   ],
+  "packageRules": [
+    {
+      "description": "No cooldown for lablabs-owned packages",
+      "matchPackageNames": [
+        "lablabs/**",
+        "ghcr.io/lablabs/**"
+      ],
+      "minimumReleaseAge": "0 days"
+    }
+  ],
   "vulnerabilityAlerts": {
     "addLabels": ["security"]
   }
