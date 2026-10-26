@@ -2,6 +2,8 @@
   "labels": [
     "dependencies"
   ],
+  "minimumReleaseAge": "7 days",
+  "internalChecksFilter": "strict",
   "enabledManagers": [
     "mise",
     "gomod",
